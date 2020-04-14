@@ -9,6 +9,7 @@
 #import "ViewController.h"
 
 @interface ViewController ()
+@property (weak, nonatomic) IBOutlet UIImageView *imgView;
 
 @end
 
@@ -17,6 +18,60 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
+    self.imgView.contentMode = UIViewContentModeScaleToFill;
+}
+
+
+- (void)test9 {
+    // One
+//    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:self.imgView.bounds byRoundingCorners:(UIRectCornerAllCorners) cornerRadii:CGSizeMake(75, 75)];
+//    CAShapeLayer *layer = [CAShapeLayer layer];
+//    layer.path = path.CGPath;
+//    self.imgView.layer.mask = layer;
+
+    /*
+     结论：
+     1、ios9以后，同时设置cornerRadius+clipsToBounds不会离屏渲染
+     但是设置背景颜色后，还是会离屏渲染
+     2、通过mask设置会产生离谱渲染
+     3、shouldRasterize：光栅化位图会产生离屏渲染
+     */
+    // Two
+    self.imgView.backgroundColor = [UIColor redColor];
+    self.imgView.layer.cornerRadius = 75;
+    self.imgView.clipsToBounds = true;
+    
+    // Three 光栅化（将图转化为一个个栅格组成的图象）
+//    self.imgView.layer.shouldRasterize = true;
+    
+}
+
+#pragma mark - 圆角绘制
+- (void)test8 {
+    // 根据图片范围生成bit map
+    UIGraphicsBeginImageContextWithOptions(self.imgView.bounds.size, false, 0);
+    // 获取当前的上下文
+    CGContextRef context = UIGraphicsGetCurrentContext();
+
+    // cornerRadii设置的值如果超过原来的一半，则会变成一半（切成圆）
+    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:self.imgView.bounds byRoundingCorners:(UIRectCornerAllCorners) cornerRadii:CGSizeMake(150, 150)];
+    // 给上下文添加新的路径（有旧的路径则会叠加）
+    CGContextAddPath(context, path.CGPath);
+    /*
+     保留path内部，裁剪path外部
+     如果context没有path，则函数不执行任何操作。
+     */
+    CGContextClip(context);
+    // 在矩形范围内，绘制图像
+    [self.imgView drawRect:self.imgView.bounds];
+    
+    // 设置路径绘制模式
+    CGContextDrawPath(context, kCGPathFillStroke);
+    // 根据当前上下文的bitmap返回图像
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    // 释放上下文
+    UIGraphicsEndImageContext();
+    self.imgView.image = image;
 }
 
 #pragma mark - 实战绘制
@@ -236,7 +291,7 @@
 }
 
 -(void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    [self test6];
+    [self test9];
 }
 
 @end
